@@ -1,4 +1,4 @@
-# CodeMentor
+# NovisCode
 
 Code reviewer pentru programatori începători. Lipești codul tău HTML/CSS sau C++, apeși un buton și primești un review structurat, ca de la un mentor real: ce ai făcut bine, ce trebuie reparat, de ce contează și cum se repară.
 
