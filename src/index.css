@@ -1,0 +1,24 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Plus Jakarta Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    color-scheme: dark;
+  }
+
+  code,
+  pre,
+  kbd {
+    font-family: var(--font-mono);
+  }
+}
+
+.cm-highlighted-line {
+  background-color: rgba(56, 189, 248, 0.14) !important;
+  box-shadow: inset 2px 0 0 #38BDF8;
+}
