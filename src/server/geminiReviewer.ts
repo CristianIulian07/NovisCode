@@ -25,7 +25,7 @@ export class ReviewerServiceError extends Error {
   }
 }
 
-const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+const DEFAULT_GEMINI_MODEL = 'gemini-3.8-flash';
 
 export function getConfiguredModel(): string {
   const customModel = process.env.GEMINI_MODEL?.trim();
