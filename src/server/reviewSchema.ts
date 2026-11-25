@@ -5,7 +5,7 @@ export const REVIEW_RESPONSE_SCHEMA: Schema = {
   properties: {
     detected_language: {
       type: Type.STRING,
-      enum: ['html_css', 'cpp', 'unsupported', 'empty'],
+      enum: ['c', 'cpp', 'python', 'javascript', 'html_css', 'unsupported', 'empty'],
     },
     verdict: {
       type: Type.OBJECT,

@@ -14,8 +14,10 @@ import { defaultKeymap, history, historyKeymap, indentLess, insertTab } from '@c
 import { HighlightStyle, indentUnit, syntaxHighlighting } from '@codemirror/language';
 import { html } from '@codemirror/lang-html';
 import { cpp } from '@codemirror/lang-cpp';
+import { javascript } from '@codemirror/lang-javascript';
+import { python } from '@codemirror/lang-python';
 import { tags } from '@lezer/highlight';
-import type { SelectedLanguage } from '../shared/types';
+import { LANGUAGE_LABELS, type SelectedLanguage } from '../shared/types';
 
 export interface HighlightRange {
   start: number;
@@ -30,6 +32,21 @@ interface CodeEditorProps {
   highlightedRange: HighlightRange | null;
   onSubmit: () => void;
   disabled?: boolean;
+}
+
+function getLanguageExtension(language: SelectedLanguage) {
+  switch (language) {
+    case 'c':
+    case 'cpp':
+      return cpp();
+    case 'python':
+      return python();
+    case 'javascript':
+      return javascript();
+    case 'html_css':
+    default:
+      return html();
+  }
 }
 
 const setHighlightedLines = StateEffect.define<{ start: number; end: number } | null>();
@@ -156,6 +173,7 @@ export function CodeEditor({
   const containerRef = useRef<HTMLDivElement | null>(null);
   const viewRef = useRef<EditorView | null>(null);
   const languageCompartment = useRef(new Compartment());
+  const placeholderCompartment = useRef(new Compartment());
   const readOnlyCompartment = useRef(new Compartment());
   const onChangeRef = useRef(onChange);
   const onSubmitRef = useRef(onSubmit);
@@ -193,12 +211,14 @@ export function CodeEditor({
         EditorState.tabSize.of(2),
         submitKeymap,
         keymap.of([...defaultKeymap, ...historyKeymap]),
-        languageCompartment.current.of(language === 'cpp' ? cpp() : html()),
+        languageCompartment.current.of(getLanguageExtension(language)),
+        placeholderCompartment.current.of(
+          placeholder(`Lipește aici codul tău ${LANGUAGE_LABELS[language]} (sau încarcă un exemplu)...`),
+        ),
         readOnlyCompartment.current.of(EditorState.readOnly.of(disabled)),
         editorTheme,
         syntaxHighlighting(neutralHighlightStyle),
         highlightLinesField,
-        placeholder('Lipește aici codul tău HTML/CSS sau C++...'),
         EditorView.contentAttributes.of({
           'aria-label': 'Editor de cod',
         }),
@@ -221,7 +241,6 @@ export function CodeEditor({
       view.destroy();
       viewRef.current = null;
     };
-    // Intentionally initialize CodeMirror once; value/language/disabled sync via effects below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -241,7 +260,12 @@ export function CodeEditor({
     const view = viewRef.current;
     if (!view) return;
     view.dispatch({
-      effects: languageCompartment.current.reconfigure(language === 'cpp' ? cpp() : html()),
+      effects: [
+        languageCompartment.current.reconfigure(getLanguageExtension(language)),
+        placeholderCompartment.current.reconfigure(
+          placeholder(`Lipește aici codul tău ${LANGUAGE_LABELS[language]} (sau încarcă un exemplu)...`),
+        ),
+      ],
     });
   }, [language]);
 
@@ -280,7 +304,7 @@ export function CodeEditor({
     <div
       ref={containerRef}
       data-testid="code-editor"
-      className="h-[340px] sm:h-[420px] lg:h-[500px] w-full overflow-hidden rounded-lg border border-[#262A33] bg-[#111318] focus-within:border-[#38BDF8] focus-within:ring-1 focus-within:ring-[#38BDF8]"
+      className="h-[340px] sm:h-[420px] lg:h-[520px] w-full overflow-hidden rounded-lg border border-[#262A33] bg-[#111318] focus-within:border-[#38BDF8] focus-within:ring-1 focus-within:ring-[#38BDF8]"
     />
   );
 }

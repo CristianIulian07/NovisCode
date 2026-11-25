@@ -1,97 +1,96 @@
-# NovisCode
+# NovisCode — AI Code Mentor for Beginners
 
-Code reviewer pentru programatori începători. Lipești codul tău HTML/CSS sau C++, apeși un buton și primești un review structurat, ca de la un mentor real: ce ai făcut bine, ce trebuie reparat, de ce contează și cum se repară.
-
-> **Status:** schelet inițial. Proiectul este în lucru și va fi îmbunătățit.
+**NovisCode** este o aplicație web full-stack de code review asistat de AI, gândită special pentru studenți și programatori aflați la început de drum. Lipești codul tău în **C**, **C++**, **Python**, **JavaScript** sau **HTML/CSS**, iar aplicația îți oferă un review structurat, ancorat pe linii exacte din editor: ce ai făcut bine, ce trebuie reparat, *de ce* contează în practică și cum poți aplica reparația direct în cod.
 
 ## De ce există
 
-Linterele și compilatoarele spun *ce* e greșit, dar rareori *de ce* contează și *ce să înveți* mai departe. CodeMentor încearcă să umple golul ăsta pentru începători: feedback concret, legat de linii exacte din cod, fără sfaturi generice.
+Compilatoarele și linterele semnalează erorile de sintaxă, dar rareori explică pe înțelesul unui student de anul I *de ce* o practică duce la buguri de memorie, vulnerabilități sau comportament nedefinit și *ce concept* merită aprofundat. NovisCode acționează ca un asistent de laborator răbdător și riguros.
 
-## Funcționalități
+## Funcționalități cheie
 
-- Suport pentru **HTML/CSS** și **C++** (C++17)
-- Review structurat, cu probleme sortate după severitate: `critical`, `important`, `minor`
-- Fiecare problemă include categoria, intervalul de linii, explicația („de ce contează"), soluția, un snippet corectat și un concept de căutat mai departe
-- Secțiune „Ce ai făcut bine" și top 3 priorități
-- Click pe o problemă evidențiază liniile corespunzătoare în editor
-- Exemple de cod cu greșeli reale, ca să poți testa rapid
-- Stări de interfață pentru: gol, încărcare, eroare, rezultat
-- Interfață în limba română
+- **5 limbaje suportate cu evidențiere sintactică (CodeMirror 6):** `C (C11)`, `C++ (C++17)`, `Python 3`, `JavaScript (ES2022+)` și `HTML/CSS`
+- **Backend propriu Express.js:** Cheia `GEMINI_API_KEY` rămâne strict pe server (`/api/review` & `/api/health`), fără a fi expusă în browser
+- **Structured JSON Output & Validare:** Răspunsurile modelului Gemini sunt constrânse printr-un `responseSchema` strict, normalizate, sortate după severitate (`critical` → `important` → `minor`) și ancorate la intervale reale de linii (`line_start`–`line_end`)
+- **Interactivitate directă cu editorul:**
+  - Click pe orice observație sau prioritate derulează și evidențiază liniile vizate în editor
+  - Buton **„Aplică în editor”** pentru înlocuirea directă a secvenței problematice (cu suport `Ctrl+Z` / Undo în CodeMirror) și buton de copiere rapidă
+- **Istoric local & Export Markdown:** Ultimele 10 analize sunt salvate în `localStorage` pentru compararea progresului, iar fiecare review poate fi descărcat ca fișier `.md`
+- **Exemple didactice preîncărcate:** Fragmente de cod cu greșeli autentice de anul I (ex. alocări `malloc` și `scanf` în C, `new[]`/`strcpy` în C++, argumente mutabile implicite în Python, `async/await` + DOM XSS în JS, accesibilitate în HTML/CSS)
 
-## Cum funcționează
+## Arhitectură & Tehnologii
 
-1. Utilizatorul lipește codul și alege limbajul.
-2. Aplicația numerotează liniile (`1| cod`) și trimite codul către Gemini, împreună cu un **System Instruction** strict.
-3. Gemini răspunde doar în **JSON**, validat cu un `responseSchema`, ca să nu poată returna text vag și neancorat în cod.
-4. Aplicația parsează răspunsul și afișează review-ul.
+- **Frontend:** React 19, TypeScript, Tailwind CSS v4, CodeMirror 6, Lucide Icons
+- **Backend:** Node.js, Express 4, `@google/genai` SDK (Google Gemini API)
+- **Testare & Calitate:** Node.js Test Runner (`node:test`), TypeScript strict type-checking
 
-Câteva alegeri care reduc răspunsurile generice:
-
-- **Structured output:** fiecare problemă trebuie să indice linii concrete și să respecte limite de lungime.
-- **Temperatură mică** (0.2), pentru răspunsuri consecvente.
-- **Codul trimis e tratat ca date, nu ca instrucțiuni**, deci comentariile de tip „ignoră regulile" sunt ignorate.
-- Reguli explicite pentru ce **nu** se raportează: probleme inventate, preferințe de stil, laudă fabricată.
-
-## Tehnologii
-
-- React + TypeScript
-- Tailwind CSS
-- Google Gemini API (`@google/genai`)
+```text
+NovisCode/
+├── server.ts                      # Server Express (/api/health, /api/review + Vite middleware / static build)
+├── systemInstruction.ts           # Promptul de sistem cu reguli anti-prompt-injection și criterii pe limbaje
+├── src/
+│   ├── App.tsx                    # Interfața principală, istoric local și stări de analiză
+│   ├── components/
+│   │   ├── CodeEditor.tsx         # Editor CodeMirror 6 cu suport multi-limbaj și evidențiere pe linii
+│   │   ├── IssueCard.tsx          # Card de observație cu severitate, explicații și aplicare snippet
+│   │   ├── ReviewPanel.tsx        # Sumar verdict, puncte forte, priorități și export Markdown
+│   │   └── ReviewSkeleton.tsx     # Stare de încărcare accesibilă
+│   ├── data/
+│   │   └── examples.ts            # Exemple cu buguri reale pentru C, C++, Python, JS și HTML/CSS
+│   ├── server/
+│   │   ├── geminiReviewer.ts      # Integrare Gemini API și clasificare erori HTTP/rețea/cotă
+│   │   └── reviewSchema.ts        # Schema JSON impusă modelului Gemini
+│   └── shared/
+│       ├── types.ts               # Tipuri partajate client-server
+│       ├── reviewLogic.ts         # Validare, numerotare linii, parsare JSON, aplicare snippet & export .md
+│       └── reviewLogic.test.ts    # Suite de teste unitare
+└── package.json
+```
 
 ## Rulare locală
 
-Cerințe: Node.js 18+ și o cheie API de la [Google AI Studio](https://aistudio.google.com/).
+### Cerințe
+- **Node.js 20+**
+- O cheie gratuită **Google Gemini API** din [Google AI Studio](https://aistudio.google.com/apikey)
+
+### Pași de instalare
 
 ```bash
-git clone <URL-ul-repo-ului>
-cd <numele-folderului>
+git clone https://github.com/CristianIulian07/NovisCode.git
+cd NovisCode
 npm install
 ```
 
-Creează un fișier `.env.local` în rădăcina proiectului:
+Creează fișierul `.env` în rădăcina proiectului pornind de la `.env.example`:
 
-```
-GEMINI_API_KEY=cheia_ta_aici
+```bash
+cp .env.example .env
 ```
 
-Apoi pornește aplicația:
+Completează cheia ta în `.env`:
+
+```env
+GEMINI_API_KEY=cheia_ta_gemini_aici
+GEMINI_MODEL=gemini-2.5-flash
+PORT=3000
+```
+
+Pornește serverul de dezvoltare (frontend + backend pe același port):
 
 ```bash
 npm run dev
 ```
 
-> Numele variabilei și comenzile pot diferi puțin în funcție de cum a generat AI Studio proiectul. Verifică `package.json` și fișierele de configurare.
+Deschide [http://localhost:3000](http://localhost:3000) în browser.
 
-## Structura proiectului
+## Verificare & Build pentru producție
 
-> Completează după ce te uiți în proiect.
-
+```bash
+npm test          # Rulează testele unitare
+npm run lint      # Verifică tipurile TypeScript (tsc --noEmit)
+npm run build     # Construiește bundle-ul de producție în dist/
+npm start         # Pornește serverul Express în modul production
 ```
-src/
-  components/        # editor, carduri de probleme, stări UI
-  systemInstruction.ts   # promptul de sistem trimis către Gemini
-  ...
-```
-
-## Securitate
-
-- **Nu comite niciodată cheia API.** Adaugă `.env*` în `.gitignore`.
-- Dacă aplicația apelează Gemini direct din browser, cheia e vizibilă pentru oricine deschide aplicația. E acceptabil pentru un demo local, dar pentru o versiune publică apelul trebuie mutat pe un server.
-
-## Limitări cunoscute
-
-- Review-ul vine de la un model AI și poate greși sau rata probleme. Verifică-l cu documentația și cu propriul compilator.
-- Limita de 8.000 de caractere pe cod trimis.
-- Doar HTML/CSS și C++ (fără JavaScript sau alte limbaje).
-
-## Idei pentru viitor
-
-- [ ] Suport pentru Python și JavaScript
-- [ ] Istoric al review-urilor
-- [ ] Comutator limbă RO/EN
-- [ ] Apel către Gemini printr-un backend propriu
 
 ## Licență
 
-Alege una (de exemplu MIT) și adaug-o într-un fișier `LICENSE`.
+Distribuit sub licența [MIT](./LICENSE).

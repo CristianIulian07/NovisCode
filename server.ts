@@ -1,10 +1,18 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import express, { type Request, type Response } from 'express';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { validateCodeInput } from './src/shared/reviewLogic';
+import { isSelectedLanguage, validateCodeInput } from './src/shared/reviewLogic';
 import type { SelectedLanguage } from './src/shared/types';
-import { ReviewerServiceError, reviewStudentCode } from './src/server/geminiReviewer';
+import {
+  ReviewerServiceError,
+  getConfiguredModel,
+  isApiKeyConfigured,
+  reviewStudentCode,
+} from './src/server/geminiReviewer';
+
+dotenv.config({ path: '.env.local' });
+dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -16,13 +24,20 @@ async function startServer() {
   const app = express();
   app.use(express.json({ limit: '256kb' }));
 
+  app.get('/api/health', (_req: Request, res: Response) => {
+    res.status(200).json({
+      ok: true,
+      apiKeyConfigured: isApiKeyConfigured(),
+      model: getConfiguredModel(),
+    });
+  });
+
   app.post('/api/review', async (req: Request, res: Response) => {
     const body = req.body as { code?: unknown; language?: unknown } | undefined;
     const code = typeof body?.code === 'string' ? body.code : '';
-    const language: SelectedLanguage =
-      body?.language === 'cpp' || body?.language === 'html_css'
-        ? body.language
-        : 'html_css';
+    const language: SelectedLanguage = isSelectedLanguage(body?.language)
+      ? body.language
+      : 'c';
 
     const validation = validateCodeInput(code);
     if (!validation.valid) {
@@ -67,7 +82,7 @@ async function startServer() {
   }
 
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`NovisCode server listening on http://0.0.0.0:${PORT}`);
+    console.log(`NovisCode server listening on http://localhost:${PORT}`);
   });
 }
 

@@ -1,11 +1,12 @@
 import { useState } from 'react';
-import { AlertOctagon, AlertTriangle, Check, Copy, Info } from 'lucide-react';
+import { AlertOctagon, AlertTriangle, Check, Copy, Info, Wand2 } from 'lucide-react';
 import type { IssueCategory, IssueSeverity, ReviewIssue } from '../shared/types';
 
 interface IssueCardProps {
   issue: ReviewIssue;
   isSelected: boolean;
   onSelect: (issue: ReviewIssue) => void;
+  onApplySnippet?: (issue: ReviewIssue) => void;
 }
 
 const SEVERITY_META: Record<
@@ -49,8 +50,14 @@ function formatLineRange(start: number, end: number): string {
   return `Liniile ${start}–${end}`;
 }
 
-export function IssueCard({ issue, isSelected, onSelect }: IssueCardProps) {
+export function IssueCard({
+  issue,
+  isSelected,
+  onSelect,
+  onApplySnippet,
+}: IssueCardProps) {
   const [copied, setCopied] = useState(false);
+  const [applied, setApplied] = useState(false);
   const severity = SEVERITY_META[issue.severity];
   const SeverityIcon = severity.Icon;
   const lineLabel = formatLineRange(issue.line_start, issue.line_end);
@@ -64,6 +71,13 @@ export function IssueCard({ issue, isSelected, onSelect }: IssueCardProps) {
     } catch {
       setCopied(false);
     }
+  };
+
+  const handleApply = () => {
+    if (!issue.fixed_snippet || !onApplySnippet) return;
+    onApplySnippet(issue);
+    setApplied(true);
+    window.setTimeout(() => setApplied(false), 2000);
   };
 
   return (
@@ -125,28 +139,50 @@ export function IssueCard({ issue, isSelected, onSelect }: IssueCardProps) {
       <div className="px-4 pb-4 space-y-3">
         {issue.fixed_snippet && (
           <div className="rounded-md border border-[#22262F] bg-[#111318] overflow-hidden">
-            <div className="flex items-center justify-between gap-2 px-3 py-1.5 border-b border-[#22262F] bg-[#151820]">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-1.5 border-b border-[#22262F] bg-[#151820]">
               <span className="text-xs font-medium text-[#94A3B8]">
-                Variantă corectată
+                Variantă corectată ({lineLabel})
               </span>
-              <button
-                type="button"
-                onClick={handleCopy}
-                aria-label={`Copiază codul corectat pentru ${issue.title}`}
-                className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium text-[#CBD5E1] hover:text-[#FFFFFF] hover:bg-[#22262F] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#38BDF8] cursor-pointer whitespace-nowrap shrink-0"
-              >
-                {copied ? (
-                  <>
-                    <Check className="h-3.5 w-3.5 text-[#86EFAC]" aria-hidden="true" />
-                    <span className="text-[#86EFAC]">Copiat</span>
-                  </>
-                ) : (
-                  <>
-                    <Copy className="h-3.5 w-3.5" aria-hidden="true" />
-                    <span>Copiază</span>
-                  </>
+              <div className="flex items-center gap-1.5">
+                {onApplySnippet && (
+                  <button
+                    type="button"
+                    onClick={handleApply}
+                    aria-label={`Aplică în editor codul corectat pentru ${issue.title}`}
+                    className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium text-[#7DD3FC] hover:text-[#FFFFFF] hover:bg-[#1E293B] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#38BDF8] cursor-pointer whitespace-nowrap shrink-0"
+                  >
+                    {applied ? (
+                      <>
+                        <Check className="h-3.5 w-3.5 text-[#86EFAC]" aria-hidden="true" />
+                        <span className="text-[#86EFAC]">Aplicat</span>
+                      </>
+                    ) : (
+                      <>
+                        <Wand2 className="h-3.5 w-3.5" aria-hidden="true" />
+                        <span>Aplică în editor</span>
+                      </>
+                    )}
+                  </button>
                 )}
-              </button>
+                <button
+                  type="button"
+                  onClick={handleCopy}
+                  aria-label={`Copiază codul corectat pentru ${issue.title}`}
+                  className="inline-flex items-center gap-1.5 rounded px-2 py-1 text-xs font-medium text-[#CBD5E1] hover:text-[#FFFFFF] hover:bg-[#22262F] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#38BDF8] cursor-pointer whitespace-nowrap shrink-0"
+                >
+                  {copied ? (
+                    <>
+                      <Check className="h-3.5 w-3.5 text-[#86EFAC]" aria-hidden="true" />
+                      <span className="text-[#86EFAC]">Copiat</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="h-3.5 w-3.5" aria-hidden="true" />
+                      <span>Copiază</span>
+                    </>
+                  )}
+                </button>
+              </div>
             </div>
             <pre className="p-3 text-xs leading-relaxed text-[#E2E8F0] overflow-x-auto font-mono">
               <code>{issue.fixed_snippet}</code>

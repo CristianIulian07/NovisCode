@@ -1,18 +1,28 @@
-import type {
-  DetectedLanguage,
-  IssueCategory,
-  IssueSeverity,
-  ReviewIssue,
-  ReviewResponse,
-  SelectedLanguage,
-  VerdictLevel,
+import {
+  LANGUAGE_LABELS,
+  type DetectedLanguage,
+  type IssueCategory,
+  type IssueSeverity,
+  type ReviewIssue,
+  type ReviewResponse,
+  type SelectedLanguage,
+  type VerdictLevel,
 } from './types';
 
 export const MAX_CODE_CHARS = 8000;
 
-const VALID_DETECTED_LANGUAGES = new Set<DetectedLanguage>([
-  'html_css',
+export const SUPPORTED_LANGUAGES: readonly SelectedLanguage[] = [
+  'c',
   'cpp',
+  'python',
+  'javascript',
+  'html_css',
+];
+
+const VALID_SELECTED_LANGUAGES = new Set<SelectedLanguage>(SUPPORTED_LANGUAGES);
+
+const VALID_DETECTED_LANGUAGES = new Set<DetectedLanguage>([
+  ...SUPPORTED_LANGUAGES,
   'unsupported',
   'empty',
 ]);
@@ -47,6 +57,10 @@ export interface ValidationResult {
   valid: boolean;
   error?: string;
   charCount: number;
+}
+
+export function isSelectedLanguage(value: unknown): value is SelectedLanguage {
+  return typeof value === 'string' && VALID_SELECTED_LANGUAGES.has(value as SelectedLanguage);
 }
 
 export function validateCodeInput(code: string): ValidationResult {
@@ -244,7 +258,76 @@ export function getLanguageMismatchNotice(
   if (detected === 'empty' || detected === 'unsupported' || detected === selected) {
     return null;
   }
-  const detectedLabel = detected === 'html_css' ? 'HTML/CSS' : 'C++';
-  const selectedLabel = selected === 'html_css' ? 'HTML/CSS' : 'C++';
+  const detectedLabel = LANGUAGE_LABELS[detected];
+  const selectedLabel = LANGUAGE_LABELS[selected];
   return `Ai selectat ${selectedLabel}, dar codul pare să fie scris în ${detectedLabel}. Analiza a fost adaptată automat pentru ${detectedLabel}.`;
+}
+
+export function applySnippetToCode(
+  code: string,
+  lineStart: number,
+  lineEnd: number,
+  snippet: string,
+): string {
+  if (!snippet.trim()) {
+    return code;
+  }
+  const lines = code.split(/\r?\n/);
+  const total = Math.max(1, lines.length);
+  const startIdx = Math.min(Math.max(1, Math.trunc(lineStart)), total) - 1;
+  const endIdx = Math.min(Math.max(startIdx + 1, Math.trunc(lineEnd)), total) - 1;
+  const replacementLines = snippet.replace(/\r\n/g, '\n').split('\n');
+  const nextLines = [
+    ...lines.slice(0, startIdx),
+    ...replacementLines,
+    ...lines.slice(endIdx + 1),
+  ];
+  return nextLines.join('\n');
+}
+
+export function formatReviewAsMarkdown(
+  review: ReviewResponse,
+  language: SelectedLanguage,
+): string {
+  const langName =
+    review.detected_language !== 'empty' && review.detected_language !== 'unsupported'
+      ? LANGUAGE_LABELS[review.detected_language]
+      : LANGUAGE_LABELS[language];
+
+  const lines: string[] = [
+    `# Raport Code Review — NovisCode (${langName})`,
+    '',
+    `**Verdict:** ${review.verdict.one_line}`,
+    '',
+  ];
+
+  if (review.strengths.length > 0) {
+    lines.push('## Ce ai făcut bine');
+    for (const s of review.strengths) {
+      lines.push(`- ${s}`);
+    }
+    lines.push('');
+  }
+
+  if (review.issues.length > 0) {
+    lines.push(`## Observații detaliate (${review.issues.length})`);
+    lines.push('');
+    for (const issue of review.issues) {
+      const range =
+        issue.line_start === issue.line_end
+          ? `Linia ${issue.line_start}`
+          : `Liniile ${issue.line_start}–${issue.line_end}`;
+      lines.push(`### [${issue.severity.toUpperCase()}] ${issue.title} (${range})`);
+      lines.push(`- **De ce contează:** ${issue.why_it_matters}`);
+      lines.push(`- **Cum repari:** ${issue.how_to_fix}`);
+      lines.push(`- **Concept de aprofundat:** \`${issue.concept_to_learn}\``);
+      if (issue.fixed_snippet) {
+        lines.push('', '```', issue.fixed_snippet, '```');
+      }
+      lines.push('');
+    }
+  }
+
+  lines.push('## Notă de mentor', '', review.mentor_note, '');
+  return lines.join('\n');
 }

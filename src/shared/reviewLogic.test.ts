@@ -3,8 +3,11 @@ import assert from 'node:assert/strict';
 import {
   MAX_CODE_CHARS,
   MalformedReviewError,
+  applySnippetToCode,
   countLines,
+  formatReviewAsMarkdown,
   getLanguageMismatchNotice,
+  isSelectedLanguage,
   parseReviewResponse,
   prependLineNumbers,
   sortIssuesBySeverity,
@@ -32,9 +35,17 @@ test('validateCodeInput enforces MAX_CODE_CHARS limit', () => {
   assert.match(res.error ?? '', /8\.000/);
 });
 
+test('isSelectedLanguage validates all 5 supported languages', () => {
+  for (const lang of ['c', 'cpp', 'python', 'javascript', 'html_css']) {
+    assert.equal(isSelectedLanguage(lang), true);
+  }
+  assert.equal(isSelectedLanguage('rust'), false);
+  assert.equal(isSelectedLanguage(null), false);
+});
+
 test('prependLineNumbers prefixes every line with 1-indexed numbers', () => {
-  const sample = 'int main() {\n  return 0;\n}';
-  assert.equal(prependLineNumbers(sample), '1| int main() {\n2|   return 0;\n3| }');
+  const sample = 'int main(void) {\n  return 0;\n}';
+  assert.equal(prependLineNumbers(sample), '1| int main(void) {\n2|   return 0;\n3| }');
   assert.equal(countLines(sample), 3);
 });
 
@@ -97,11 +108,11 @@ test('sortIssuesBySeverity orders critical -> important -> minor, then line_star
   );
 });
 
-test('parseReviewResponse handles valid JSON, clamps lines, and filters invalid priority IDs', () => {
+test('parseReviewResponse handles valid JSON across languages, clamps lines, and filters invalid priority IDs', () => {
   const raw = JSON.stringify({
-    detected_language: 'cpp',
+    detected_language: 'c',
     verdict: { level: 'decent', one_line: 'Structura de bază este clară, dar există o depășire de limită.' },
-    strengths: ['Ai folosit vector în locul pointerilor bruți.'],
+    strengths: ['Ai eliberat memoria alocată cu free().'],
     issues: [
       {
         id: 'iss-minor',
@@ -109,11 +120,11 @@ test('parseReviewResponse handles valid JSON, clamps lines, and filters invalid 
         severity: 'minor',
         line_start: 2,
         line_end: 2,
-        title: 'Evită endl în buclă',
-        why_it_matters: 'Golește bufferul la fiecare iterație.',
-        how_to_fix: 'Folosește \\n în loc de std::endl.',
-        fixed_snippet: 'std::cout << x << "\\n";',
-        concept_to_learn: 'buffered output',
+        title: 'Nume de variabilă neclar',
+        why_it_matters: 'Scade lizibilitatea.',
+        how_to_fix: 'Redenumește variabila.',
+        fixed_snippet: 'int numar_note = 0;',
+        concept_to_learn: 'variable naming',
       },
       {
         id: 'iss-crit',
@@ -124,7 +135,7 @@ test('parseReviewResponse handles valid JSON, clamps lines, and filters invalid 
         title: 'Acces în afara limitelor',
         why_it_matters: 'Poate corupe memoria.',
         how_to_fix: 'Folosește < în loc de <=.',
-        fixed_snippet: 'for (int i = 0; i < 5; ++i)',
+        fixed_snippet: 'for (int i = 0; i < n; ++i)',
         concept_to_learn: 'off-by-one error',
       },
     ],
@@ -133,11 +144,24 @@ test('parseReviewResponse handles valid JSON, clamps lines, and filters invalid 
   });
 
   const parsed = parseReviewResponse(raw, 12);
-  assert.equal(parsed.detected_language, 'cpp');
+  assert.equal(parsed.detected_language, 'c');
   assert.equal(parsed.issues[0].id, 'iss-crit');
   assert.equal(parsed.issues[0].line_start, 12);
   assert.equal(parsed.issues[0].line_end, 12);
   assert.deepEqual(parsed.top_priorities, ['iss-crit', 'iss-minor']);
+
+  const markdown = formatReviewAsMarkdown(parsed, 'c');
+  assert.match(markdown, /Raport Code Review — NovisCode \(C\)/);
+  assert.match(markdown, /Acces în afara limitelor/);
+});
+
+test('applySnippetToCode replaces targeted 1-indexed line range cleanly', () => {
+  const original = ['int suma;', 'for (int i = 0; i <= n; i++) {', '  suma += v[i];', '}'].join('\n');
+  const updated = applySnippetToCode(original, 1, 2, 'int suma = 0;\nfor (int i = 0; i < n; i++) {');
+  assert.equal(
+    updated,
+    ['int suma = 0;', 'for (int i = 0; i < n; i++) {', '  suma += v[i];', '}'].join('\n'),
+  );
 });
 
 test('parseReviewResponse strips markdown code fences and rejects malformed payloads', () => {
@@ -150,12 +174,12 @@ test('parseReviewResponse strips markdown code fences and rejects malformed payl
 });
 
 test('getLanguageMismatchNotice reports mismatch only for real cross-language selection', () => {
-  assert.equal(getLanguageMismatchNotice('cpp', 'cpp'), null);
-  assert.equal(getLanguageMismatchNotice('cpp', 'unsupported'), null);
-  assert.equal(getLanguageMismatchNotice('cpp', 'empty'), null);
+  assert.equal(getLanguageMismatchNotice('python', 'python'), null);
+  assert.equal(getLanguageMismatchNotice('c', 'unsupported'), null);
+  assert.equal(getLanguageMismatchNotice('c', 'empty'), null);
 
-  const notice = getLanguageMismatchNotice('html_css', 'cpp');
+  const notice = getLanguageMismatchNotice('html_css', 'python');
   assert.ok(notice);
   assert.match(notice, /HTML\/CSS/);
-  assert.match(notice, /C\+\+/);
+  assert.match(notice, /Python/);
 });

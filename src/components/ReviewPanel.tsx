@@ -1,5 +1,8 @@
-import { AlertCircle, CheckCircle2, RotateCw } from 'lucide-react';
-import { getLanguageMismatchNotice } from '../shared/reviewLogic';
+import { AlertCircle, CheckCircle2, Download, RotateCw } from 'lucide-react';
+import {
+  formatReviewAsMarkdown,
+  getLanguageMismatchNotice,
+} from '../shared/reviewLogic';
 import type {
   ReviewIssue,
   ReviewResponse,
@@ -19,6 +22,7 @@ interface ReviewPanelProps {
   selectedIssueId: string | null;
   onSelectIssue: (issue: ReviewIssue) => void;
   onPriorityClick: (issue: ReviewIssue) => void;
+  onApplySnippet: (issue: ReviewIssue) => void;
   onRetry: () => void;
 }
 
@@ -45,16 +49,20 @@ export function ReviewPanel({
   selectedIssueId,
   onSelectIssue,
   onPriorityClick,
+  onApplySnippet,
   onRetry,
 }: ReviewPanelProps) {
   if (status === 'empty') {
     return (
       <div
         data-testid="review-empty"
-        className="rounded-lg border border-[#262A33] bg-[#14161B] p-6"
+        className="rounded-lg border border-[#262A33] bg-[#14161B] p-6 space-y-2"
       >
+        <h2 className="text-sm font-semibold text-[#ECEEF2]">
+          Pregătit pentru code review
+        </h2>
         <p className="text-sm text-[#A1A8B8] leading-relaxed">
-          Alege limbajul, lipește codul tău sau încarcă un exemplu din stânga, apoi apasă «Analizează codul».
+          Alege limbajul (C, C++, Python, JavaScript sau HTML/CSS), lipește codul tău sau încarcă un exemplu din stânga, apoi apasă «Analizează codul».
         </p>
       </div>
     );
@@ -112,6 +120,19 @@ export function ReviewPanel({
     .filter((item): item is ReviewIssue => Boolean(item))
     .slice(0, 3);
 
+  const handleExportMarkdown = () => {
+    const markdown = formatReviewAsMarkdown(review, selectedLanguage);
+    const blob = new Blob([markdown], { type: 'text/markdown;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `noviscode-review-${selectedLanguage}-${new Date().toISOString().slice(0, 10)}.md`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div data-testid="review-result" className="space-y-5">
       {mismatchNotice && (
@@ -143,16 +164,27 @@ export function ReviewPanel({
             aria-labelledby="verdict-heading"
             className="rounded-lg border border-[#262A33] bg-[#14161B] p-4 space-y-2.5"
           >
-            <div className="flex flex-wrap items-center gap-2.5">
-              <h2 id="verdict-heading" className="sr-only">
-                Verdict
-              </h2>
-              <span
-                data-testid="verdict-badge"
-                className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${verdictMeta.badgeClass}`}
+            <div className="flex flex-wrap items-center justify-between gap-2.5">
+              <div className="flex items-center gap-2.5">
+                <h2 id="verdict-heading" className="sr-only">
+                  Verdict
+                </h2>
+                <span
+                  data-testid="verdict-badge"
+                  className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${verdictMeta.badgeClass}`}
+                >
+                  {verdictMeta.label}
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={handleExportMarkdown}
+                className="inline-flex items-center gap-1.5 rounded-md border border-[#262A33] bg-[#191C22] px-2.5 py-1 text-xs font-medium text-[#CBD5E1] hover:border-[#38BDF8] hover:text-[#FFFFFF] transition-colors cursor-pointer whitespace-nowrap"
               >
-                {verdictMeta.label}
-              </span>
+                <Download className="h-3.5 w-3.5" aria-hidden="true" />
+                <span>Exportă .md</span>
+              </button>
             </div>
             <p className="text-base font-medium text-[#ECEEF2] leading-snug">
               {review.verdict.one_line}
@@ -231,6 +263,7 @@ export function ReviewPanel({
                     issue={issue}
                     isSelected={selectedIssueId === issue.id}
                     onSelect={onSelectIssue}
+                    onApplySnippet={onApplySnippet}
                   />
                 ))}
               </div>

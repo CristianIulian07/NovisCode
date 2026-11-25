@@ -1,6 +1,14 @@
-export type SelectedLanguage = 'html_css' | 'cpp';
+export type SelectedLanguage = 'c' | 'cpp' | 'python' | 'javascript' | 'html_css';
 
-export type DetectedLanguage = 'html_css' | 'cpp' | 'unsupported' | 'empty';
+export type DetectedLanguage = SelectedLanguage | 'unsupported' | 'empty';
+
+export const LANGUAGE_LABELS: Record<SelectedLanguage, string> = {
+  c: 'C',
+  cpp: 'C++',
+  python: 'Python',
+  javascript: 'JavaScript',
+  html_css: 'HTML/CSS',
+};
 
 export type VerdictLevel = 'needs_work' | 'decent' | 'solid';
 
@@ -49,4 +57,18 @@ export interface ReviewRequestBody {
 export interface ReviewErrorResponse {
   error: string;
   code: string;
+}
+
+export interface HealthStatusResponse {
+  ok: boolean;
+  apiKeyConfigured: boolean;
+  model: string;
+}
+
+export interface ReviewHistoryEntry {
+  id: string;
+  createdAt: string;
+  language: SelectedLanguage;
+  code: string;
+  review: ReviewResponse;
 }

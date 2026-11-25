@@ -6,6 +6,121 @@ export interface CodeExample {
   code: string;
 }
 
+export const C_EXAMPLE: CodeExample = {
+  id: 'c',
+  buttonLabel: 'Exemplu C (PCLP)',
+  code: `#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+double calculeaza_media(int *v, int n) {
+    int suma;
+    for (int i = 0; i <= n; i++) {
+        suma += v[i];
+    }
+    return suma / n;
+}
+
+int main(void) {
+    int n;
+    char nume_student[16];
+
+    printf("Nume student: ");
+    scanf("%s", nume_student);
+
+    printf("Numar de laboratoare: ");
+    scanf("%d", n);
+
+    int *punctaje = malloc(n);
+    for (int i = 0; i < n; i++) {
+        scanf("%d", &punctaje[i]);
+    }
+
+    printf("Media pentru %s este %.2f\\n", nume_student, calculeaza_media(punctaje, n));
+    return 0;
+}`,
+};
+
+export const CPP_EXAMPLE: CodeExample = {
+  id: 'cpp',
+  buttonLabel: 'Exemplu C++',
+  code: `#include <iostream>
+#include <cstring>
+
+using namespace std;
+
+double calculeazaMedia(int note[], int n) {
+    int suma;
+    for (int i = 0; i <= n; i++) {
+        suma += note[i];
+        cout << "Nota " << i + 1 << ": " << note[i] << endl;
+    }
+    return suma / n;
+}
+
+int main() {
+    int n;
+    cout << "Cate note introduci? ";
+    cin >> n;
+
+    int* note = new int[n];
+    for (int i = 0; i < n; i++) {
+        cin >> note[i];
+    }
+
+    char mesaj[12];
+    strcpy(mesaj, "Media finala este:");
+
+    double media = calculeazaMedia(note, n);
+    cout << mesaj << " " << media << endl;
+}`,
+};
+
+export const PYTHON_EXAMPLE: CodeExample = {
+  id: 'python',
+  buttonLabel: 'Exemplu Python',
+  code: `def adauga_nota(nota, catalog=[]):
+    catalog.append(nota)
+    return catalog
+
+def citeste_punctaje(cale_fisier):
+    f = open(cale_fisier, "r")
+    linii = f.readlines()
+    list = []
+    for linie in linii:
+        try:
+            val = int(linie)
+            if val != None and val >= 5:
+                list.append(val)
+        except:
+            pass
+    return sum(list) / len(list)
+
+note_sem1 = adauga_nota(9)
+note_sem2 = adauga_nota(7)
+print("Note semestrul 2:", note_sem2)`,
+};
+
+export const JAVASCRIPT_EXAMPLE: CodeExample = {
+  id: 'javascript',
+  buttonLabel: 'Exemplu JS',
+  code: `async function afiseazaProfilStudent(idStudent) {
+  const raspuns = fetch("/api/studenti?id=" + idStudent);
+  const date = raspuns.json();
+
+  if (date.activ == "true") {
+    const card = document.getElementById("profil");
+    card.innerHTML = "<h2>Salut, " + date.nume + "</h2>";
+  }
+
+  for (var i = 0; i < date.materii.length; i++) {
+    setTimeout(function () {
+      console.log("Materia #" + i + ": " + date.materii[i]);
+    }, 100);
+  }
+}`,
+};
+
 export const HTML_CSS_EXAMPLE: CodeExample = {
   id: 'html_css',
   buttonLabel: 'Exemplu HTML/CSS',
@@ -52,42 +167,10 @@ export const HTML_CSS_EXAMPLE: CodeExample = {
 </html>`,
 };
 
-export const CPP_EXAMPLE: CodeExample = {
-  id: 'cpp',
-  buttonLabel: 'Exemplu C++',
-  code: `#include <iostream>
-#include <cstring>
-
-using namespace std;
-
-double calculeazaMedia(int note[], int n) {
-    int suma;
-    for (int i = 0; i <= n; i++) {
-        suma += note[i];
-        cout << "Nota " << i + 1 << ": " << note[i] << endl;
-    }
-    return suma / n;
-}
-
-int main() {
-    int n;
-    cout << "Cate note introduci? ";
-    cin >> n;
-
-    int* note = new int[n];
-    for (int i = 0; i < n; i++) {
-        cin >> note[i];
-    }
-
-    char mesaj[12];
-    strcpy(mesaj, "Media finala este:");
-
-    double media = calculeazaMedia(note, n);
-    cout << mesaj << " " << media << endl;
-}`,
-};
-
 export const CODE_EXAMPLES: Record<SelectedLanguage, CodeExample> = {
-  html_css: HTML_CSS_EXAMPLE,
+  c: C_EXAMPLE,
   cpp: CPP_EXAMPLE,
+  python: PYTHON_EXAMPLE,
+  javascript: JAVASCRIPT_EXAMPLE,
+  html_css: HTML_CSS_EXAMPLE,
 };

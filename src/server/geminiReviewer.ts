@@ -6,7 +6,11 @@ import {
   parseReviewResponse,
   prependLineNumbers,
 } from '../shared/reviewLogic';
-import type { ReviewResponse, SelectedLanguage } from '../shared/types';
+import {
+  LANGUAGE_LABELS,
+  type ReviewResponse,
+  type SelectedLanguage,
+} from '../shared/types';
 import { REVIEW_RESPONSE_SCHEMA } from './reviewSchema';
 
 export class ReviewerServiceError extends Error {
@@ -21,26 +25,29 @@ export class ReviewerServiceError extends Error {
   }
 }
 
-const MODEL_NAME = 'gemini-4-hydrogen';
+const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash';
+
+export function getConfiguredModel(): string {
+  const customModel = process.env.GEMINI_MODEL?.trim();
+  return customModel && customModel.length > 0 ? customModel : DEFAULT_GEMINI_MODEL;
+}
+
+export function isApiKeyConfigured(): boolean {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  return Boolean(apiKey && apiKey !== 'MY_GEMINI_API_KEY' && apiKey !== 'cheia_ta_aici');
+}
 
 function createClient(): GoogleGenAI {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey || apiKey.trim().length === 0) {
+  const apiKey = process.env.GEMINI_API_KEY?.trim();
+  if (!apiKey || apiKey === 'MY_GEMINI_API_KEY' || apiKey === 'cheia_ta_aici') {
     throw new ReviewerServiceError(
-      'Cheia API pentru analiza codului nu este configurată pe server.',
+      'Cheia GEMINI_API_KEY nu este configurată. Adaug-o în fișierul .env (sau .env.local) și repornește serverul.',
       500,
       'MISSING_API_KEY',
     );
   }
 
-  return new GoogleGenAI({
-    apiKey,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      },
-    },
-  });
+  return new GoogleGenAI({ apiKey });
 }
 
 function classifyGeminiError(error: unknown): ReviewerServiceError {
@@ -78,7 +85,7 @@ function classifyGeminiError(error: unknown): ReviewerServiceError {
     lower.includes('api key')
   ) {
     return new ReviewerServiceError(
-      'Serviciul de analiză a respins autentificarea API. Verifică configurarea cheii pe server.',
+      'Serviciul de analiză a respins autentificarea API. Verifică valoarea GEMINI_API_KEY din .env.',
       502,
       'API_AUTH_ERROR',
     );
@@ -114,6 +121,14 @@ function classifyGeminiError(error: unknown): ReviewerServiceError {
   );
 }
 
+const PROMPT_LANGUAGE_DESCRIPTIONS: Record<SelectedLanguage, string> = {
+  c: 'C (C11)',
+  cpp: 'C++ (C++17)',
+  python: 'Python 3',
+  javascript: 'JavaScript (ES2022+)',
+  html_css: 'HTML/CSS',
+};
+
 export async function reviewStudentCode(
   code: string,
   selectedLanguage: SelectedLanguage,
@@ -121,7 +136,8 @@ export async function reviewStudentCode(
   const ai = createClient();
   const totalLines = countLines(code);
   const numberedCode = prependLineNumbers(code);
-  const languageLabel = selectedLanguage === 'html_css' ? 'HTML/CSS' : 'C++ (C++17)';
+  const languageLabel =
+    PROMPT_LANGUAGE_DESCRIPTIONS[selectedLanguage] ?? LANGUAGE_LABELS[selectedLanguage];
 
   const prompt = [
     `Limbajul selectat de student în interfață: ${languageLabel}`,
@@ -133,7 +149,7 @@ export async function reviewStudentCode(
 
   try {
     const response = await ai.models.generateContent({
-      model: MODEL_NAME,
+      model: getConfiguredModel(),
       contents: prompt,
       config: {
         temperature: 0.2,
